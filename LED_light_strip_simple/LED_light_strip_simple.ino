@@ -6,7 +6,7 @@
 
 
 #include <Wire.h>
-#include "LED_light_strip_PWM.h"
+#include "LED_light_strip_PWM_lib.h"
 #include "Adafruit_PWMServoDriver.h" // https://github.com/adafruit/Adafruit-PWM-Servo-Driver-Library
 #define COMMON_ANODE true
 #define BUTTON1 2     // BUTTON1 on INT0, pin PD2
@@ -22,7 +22,10 @@ Adafruit_PWMServoDriver pwm = Adafruit_PWMServoDriver();
 //#define LOGFADE
 #define STEPSIZE 8
 #define STEPDELAYUP 15
-#define STEPDELAYDOWN 15
+#define STEPDELAYDOWN 10
+#define MAXBRIGHTPURPLE 3500
+#define MAXBRIGHTORANGE 3500
+#define MAXBRIGHTWHITE 3000   // Maximum value is 4096
 
 #define MINBRIGHT 0 // up to 4096 max, 0 min
 #define MAXBRIGHT 4096 // up to 4096 maximum
@@ -34,15 +37,6 @@ const int pwmIntervals255 = 255;
 //--------- RGB LED setup --------------------------
 // Create object for the onboard red green blue LED
 ONBOARDLED onboardrgb;
-
-
-struct Color{
-  uint16_t r;
-  uint16_t g;
-  uint16_t b;
-};
-typedef struct Color mycolor;
-
 
 int brightness = 0;
 
@@ -82,37 +76,50 @@ void setup() {
 void loop() {
      uint16_t rOut, gOut, bOut = 0;
      
-
     // Values for angle can vary from 0 to 360, representing location (degrees)
     // around the color wheel, going from red to orange to yellow to green to 
     // aqual to blue to purple to pink back to red
     int angle = 23;  // 22 = orangish red
-    int maxbright = 3500;
-    for (int v = MINBRIGHT; v < maxbright; v += STEPSIZE){
-      onboardrgb.writeHSV(angle,1, v / (float)maxbright, R255);
-      convertHSV(angle, 1, v / (float)maxbright, R, rOut, gOut, bOut);
-      mysetpwm(pwm, RED, GREEN, BLUE, rOut, gOut, bOut);
+    for (int v = MINBRIGHT; v < MAXBRIGHTORANGE; v += STEPSIZE){
+      onboardrgb.writeHSV(angle,1, v / (float)MAXBRIGHTORANGE, R255);
+      convertHSV(angle, 1, v / (float)MAXBRIGHTORANGE, R, rOut, gOut, bOut);
+      mysetpwm(pwm, RED, GREEN, BLUE, rOut, gOut, bOut, R);
       delay(STEPDELAYUP);
     }
-    for (int v = maxbright-1; v >= MINBRIGHT; v -= STEPSIZE){
-      onboardrgb.writeHSV(angle,1, v / (float)maxbright, R255);
-      convertHSV(angle, 1, v / (float)maxbright, R, rOut, gOut, bOut);
-      mysetpwm(pwm, RED, GREEN, BLUE, rOut, gOut, bOut);
+    for (int v = MAXBRIGHTORANGE-1; v >= MINBRIGHT; v -= STEPSIZE){
+      onboardrgb.writeHSV(angle,1, v / (float)MAXBRIGHTORANGE, R255);
+      convertHSV(angle, 1, v / (float)MAXBRIGHTORANGE, R, rOut, gOut, bOut);
+      mysetpwm(pwm, RED, GREEN, BLUE, rOut, gOut, bOut, R);
+      delay(STEPDELAYDOWN);
+    }
+    // Purple
+    
+    angle = 305;  // 300 = purple
+    for (int v = MINBRIGHT; v < MAXBRIGHTPURPLE; v += STEPSIZE){
+      onboardrgb.writeHSV(angle,1, v / (float)MAXBRIGHTPURPLE, R255);
+      convertHSV(angle, 1, v / (float)MAXBRIGHTPURPLE, R, rOut, gOut, bOut);
+      mysetpwm(pwm, RED, GREEN, BLUE, rOut, gOut, bOut, R);
+      delay(STEPDELAYUP);
+    }
+    for (int v = MAXBRIGHTPURPLE-1; v >= MINBRIGHT; v -= STEPSIZE){
+      onboardrgb.writeHSV(angle,1, v / (float)MAXBRIGHTPURPLE, R255);
+      convertHSV(angle, 1, v / (float)MAXBRIGHTPURPLE, R, rOut, gOut, bOut);
+      mysetpwm(pwm, RED, GREEN, BLUE, rOut, gOut, bOut, R);
       delay(STEPDELAYDOWN);
     }
 
-    angle = 305;  // 300 = purple
-    for (int v = MINBRIGHT; v < MAXBRIGHT; v += STEPSIZE){
-      onboardrgb.writeHSV(angle,1, v / (float)MAXBRIGHT, R255);
-      convertHSV(angle, 1, v / (float)MAXBRIGHT, R, rOut, gOut, bOut);
-      mysetpwm(pwm, RED, GREEN, BLUE, rOut, gOut, bOut);
-      delay(STEPDELAYUP);
-    }
-    for (int v = MAXBRIGHT-1; v >= MINBRIGHT; v -= STEPSIZE){
-      onboardrgb.writeHSV(angle,1, v / (float)MAXBRIGHT, R255);
-      convertHSV(angle, 1, v / (float)MAXBRIGHT, R, rOut, gOut, bOut);
-      mysetpwm(pwm, RED, GREEN, BLUE, rOut, gOut, bOut);
-      delay(STEPDELAYDOWN);
-    }
+    // Bright white
+//    for (int v = MINBRIGHT; v < MAXBRIGHTWHITE; v += STEPSIZE){
+//      onboardrgb.writeHSV(angle,1, v / (float)MAXBRIGHTWHITE, R255);
+////      convertHSV(angle, 1, v / (float)MAXBRIGHTWHITE, R, rOut, gOut, bOut);
+//      mysetpwm(pwm, RED, GREEN, BLUE, v, v, v, R);
+//      delay(STEPDELAYUP);
+//    }
+//    for (int v = MAXBRIGHTWHITE-1; v >= MINBRIGHT; v -= STEPSIZE){
+//      onboardrgb.writeHSV(angle,1, v / (float)MAXBRIGHTWHITE, R255);
+////      convertHSV(angle, 1, v / (float)MAXBRIGHTWHITE, R, rOut, gOut, bOut);
+//      mysetpwm(pwm, RED, GREEN, BLUE, v, v, v, R);
+//      delay(STEPDELAYDOWN);
+//    }
 
 }  // end of main loop
