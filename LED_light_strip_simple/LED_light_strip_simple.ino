@@ -21,10 +21,10 @@
 #define STOPHOUR  22 // What hour of the day should lights turn off?
 #define LOGFADE  // Comment out to disable the logarithmic light fade
 #define STEPSIZE 8  // Number of PWM steps to skip
-#define STEPDELAYUP 15 // milliseconds between fade steps
-#define STEPDELAYDOWN 10 // milliseconds between fade steps
-#define MAXBRIGHTPURPLE 3500  // Maximum value is 4096
-#define MAXBRIGHTORANGE 3500  // Maximum value is 4096
+#define STEPDELAYUP 5 // milliseconds between fade steps
+#define STEPDELAYDOWN 5 // milliseconds between fade steps
+#define MAXBRIGHTPURPLE 4096  // Maximum value is 4096
+#define MAXBRIGHTORANGE 4096  // Maximum value is 4096
 #define MAXBRIGHTWHITE 3000   // Maximum value is 4096
 
 
@@ -39,7 +39,14 @@ Adafruit_PWMServoDriver pwm = Adafruit_PWMServoDriver();
 #define RED 1
 #define GREEN 0
 #define BLUE 2
-
+// Output channel 2
+#define RED2 4
+#define GREEN2 3
+#define BLUE2 5
+// Output channel 3
+#define RED3 7
+#define GREEN3 6
+#define BLUE3 8
 
 
 // --------------
@@ -173,12 +180,20 @@ void setup() {
 //--------------------------------------------------
 void loop() {
      int angle = 0;
+//     Serial.println("Next cycle");
     // Start by checking the status of the button1 flag
     if (button1Flag){
       // Button1 was pressed
       attachInterrupt(0, buttonFunc, LOW); // restart the interrupt
-      button1Flag = false; // reset the flag
+      delay(1);
       manualRunFlag = !manualRunFlag; // Switch manualRunFlag
+      if (manualRunFlag){
+        Serial.println("Manual mode on");
+      } else {
+        Serial.println("Manual mode off");
+      }
+      button1Flag = false; // reset the flag
+      Serial.print("Button 1 flag: "); Serial.println(button1Flag);
     }
 
     // Update the clock time and see if it's time to be on
@@ -198,17 +213,21 @@ void loop() {
           // Values for angle can vary from 0 to 360, representing location (degrees)
           // around the color wheel, going from red to orange to yellow to green to 
           // aqual to blue to purple to pink back to red
-          angle = 23;  // 22 = orangish red
+          angle = 24;  // 22 = orangish red
           for (int v = MINBRIGHT; v < MAXBRIGHTORANGE; v += STEPSIZE){
             onboardrgb.writeHSV(angle,1, v / (float)MAXBRIGHTORANGE, R255);
             convertHSV(angle, 1, v / (float)MAXBRIGHTORANGE, rOut, gOut, bOut);
             mysetpwm(pwm, RED, GREEN, BLUE, rOut, gOut, bOut, R);
+            mysetpwm(pwm, RED2, GREEN2, BLUE2, rOut, gOut, bOut, R);
+            mysetpwm(pwm, RED3, GREEN3, BLUE3, rOut, gOut, bOut, R);
             delay(STEPDELAYUP);
           }
           for (int v = MAXBRIGHTORANGE-1; v >= MINBRIGHT; v -= STEPSIZE){
             onboardrgb.writeHSV(angle,1, v / (float)MAXBRIGHTORANGE, R255);
             convertHSV(angle, 1, v / (float)MAXBRIGHTORANGE, rOut, gOut, bOut);
             mysetpwm(pwm, RED, GREEN, BLUE, rOut, gOut, bOut, R);
+            mysetpwm(pwm, RED2, GREEN2, BLUE2, rOut, gOut, bOut, R);
+            mysetpwm(pwm, RED3, GREEN3, BLUE3, rOut, gOut, bOut, R);
             delay(STEPDELAYDOWN);
           }
           // Purple
@@ -218,14 +237,20 @@ void loop() {
             onboardrgb.writeHSV(angle,1, v / (float)MAXBRIGHTPURPLE, R255);
             convertHSV(angle, 1, v / (float)MAXBRIGHTPURPLE, rOut, gOut, bOut);
             mysetpwm(pwm, RED, GREEN, BLUE, rOut, gOut, bOut, R);
+            mysetpwm(pwm, RED2, GREEN2, BLUE2, rOut, gOut, bOut, R);
+            mysetpwm(pwm, RED3, GREEN3, BLUE3, rOut, gOut, bOut, R);
             delay(STEPDELAYUP);
           }
           for (int v = MAXBRIGHTPURPLE-1; v >= MINBRIGHT; v -= STEPSIZE){
             onboardrgb.writeHSV(angle,1, v / (float)MAXBRIGHTPURPLE, R255);
             convertHSV(angle, 1, v / (float)MAXBRIGHTPURPLE, rOut, gOut, bOut);
             mysetpwm(pwm, RED, GREEN, BLUE, rOut, gOut, bOut, R);
+            mysetpwm(pwm, RED2, GREEN2, BLUE2, rOut, gOut, bOut, R);
+            mysetpwm(pwm, RED3, GREEN3, BLUE3, rOut, gOut, bOut, R);
             delay(STEPDELAYDOWN);
           }
+          Serial.println("Finished orange-purple cycle");
+          Serial.print("Button 1 flag: "); Serial.println(button1Flag);
         break;
 
         case XMAS:
@@ -272,5 +297,6 @@ void buttonFunc(void){
   delay(debounceTime);
   if (digitalRead(BUTTON1) == LOW){
     button1Flag = true;
+    Serial.println("Button 1 pressed");
   }
 }
