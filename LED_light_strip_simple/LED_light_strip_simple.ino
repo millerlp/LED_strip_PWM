@@ -22,10 +22,13 @@
 #define LOGFADE  // Comment out to disable the logarithmic light fade
 #define STEPSIZE 8  // Number of PWM steps to skip
 #define STEPDELAYUP 5 // milliseconds between fade steps
-#define STEPDELAYDOWN 5 // milliseconds between fade steps
+#define STEPDELAYDOWN 7 // milliseconds between fade steps
 #define MAXBRIGHTPURPLE 4096  // Maximum value is 4096
 #define MAXBRIGHTORANGE 4096  // Maximum value is 4096
+#define MAXBRIGHTRED    4096
+#define MAXBRIGHTGREEN  4096
 #define MAXBRIGHTWHITE 3000   // Maximum value is 4096
+#define HOLDTIME 2000 // milliseconds to hold full brightness before dimming
 
 
 #define COMMON_ANODE true
@@ -51,7 +54,7 @@ Adafruit_PWMServoDriver pwm = Adafruit_PWMServoDriver();
 
 // --------------
 // Leave these values alone
-#define MINBRIGHT 0 // up to 4096 max, 0 min
+#define MINBRIGHT 1536 // up to 4096 max, 0 min
 #define MAXBRIGHT 4096 // up to 4096 maximum
 double R, R255;  // Used for scaling brightness of LEDs
 // The number of Steps between the output being on and off
@@ -97,26 +100,28 @@ void setup() {
   // Set BUTTON1 as an input
   pinMode(BUTTON1, INPUT_PULLUP);
   attachInterrupt(0, buttonFunc, LOW);
-  pinMode(PC1, INPUT_PULLUP); // connect PC1 to GND to change light mode
-  pinMode(PC2, INPUT_PULLUP); // connect PC2 to GND to change light mode
+  pinMode(A1, INPUT_PULLUP); // connect PC1 to GND to change light mode
+  pinMode(A2, INPUT_PULLUP); // connect PC2 to GND to change light mode
   delay(10);
   //----------- Light mode ------------
   // Read PC1, PC2 to determine what mode to use
-  bool PC1value = digitalRead(PC1);
-  bool PC2value = digitalRead(PC2);
-  if (PC1value && PC2value){
+  bool PC1value = digitalRead(A1);
+  bool PC2value = digitalRead(A2);
+  Serial.print("PC1 Value: ");Serial.println(PC1value);
+  Serial.print("PC2 Value: ");Serial.println(PC2value);
+  if (PC1value & PC2value){
     // PC1 and PC2 are both high
     modeState = HALLOWEEN;
     Serial.println("Halloween");
-  } else if (!PC1value && PC2value) {
+  } else if ( (!PC1value) & PC2value) {
     // PC1 is low, PC2 is high
     modeState = XMAS;
     Serial.println("Xmas");
-  } else if (PC1value && !PC2value) {
+  } else if (PC1value & (!PC2value) ) {
     // PC1 is high, PC2 is low
     modeState = RWB;
     Serial.println("Red White Blue");
-  } else if (!PC1value && !PC2value){
+  } else if ((!PC1value) & (!PC2value)){
     // PC1 and PC2 are both low
     modeState = HANUKKAH;
     Serial.println("Hanukkah");
@@ -179,8 +184,12 @@ void setup() {
 
 //--------------------------------------------------
 void loop() {
-     int angle = 0;
-//     Serial.println("Next cycle");
+    // Define 3 HSV color angle values (0-360 degrees), see 
+    // https://github.com/FastLED/FastLED/wiki/FastLED-HSV-Colors 
+     int angleCh1 = 0;
+     int angleCh2 = 0;
+     int angleCh3 = 0;
+
     // Start by checking the status of the button1 flag
     if (button1Flag){
       // Button1 was pressed
@@ -198,7 +207,7 @@ void loop() {
 
     // Update the clock time and see if it's time to be on
     newtime = rtc.now();
-    if ( (newtime.hour() >= STARTHOUR) & (newtime.hour() < STOPHOUR) ) {
+    if ( (newtime.hour() >= STARTHOUR) & (newtime.hour() <= STOPHOUR) ) {
       // If it's within the start and stop hours of the day, turn on
       timeRunFlag = true;
     } else {
@@ -213,37 +222,41 @@ void loop() {
           // Values for angle can vary from 0 to 360, representing location (degrees)
           // around the color wheel, going from red to orange to yellow to green to 
           // aqual to blue to purple to pink back to red
-          angle = 24;  // 22 = orangish red
+          angleCh1 = 27;  // 22 = orangish red
           for (int v = MINBRIGHT; v < MAXBRIGHTORANGE; v += STEPSIZE){
-            onboardrgb.writeHSV(angle,1, v / (float)MAXBRIGHTORANGE, R255);
-            convertHSV(angle, 1, v / (float)MAXBRIGHTORANGE, rOut, gOut, bOut);
+            onboardrgb.writeHSV(angleCh1,1, v / (float)MAXBRIGHTORANGE, R255);
+            convertHSV(angleCh1, 1, v / (float)MAXBRIGHTORANGE, rOut, gOut, bOut);
+            // All 3 channels running the same color
             mysetpwm(pwm, RED, GREEN, BLUE, rOut, gOut, bOut, R);
             mysetpwm(pwm, RED2, GREEN2, BLUE2, rOut, gOut, bOut, R);
             mysetpwm(pwm, RED3, GREEN3, BLUE3, rOut, gOut, bOut, R);
             delay(STEPDELAYUP);
           }
+          delay(HOLDTIME);
           for (int v = MAXBRIGHTORANGE-1; v >= MINBRIGHT; v -= STEPSIZE){
-            onboardrgb.writeHSV(angle,1, v / (float)MAXBRIGHTORANGE, R255);
-            convertHSV(angle, 1, v / (float)MAXBRIGHTORANGE, rOut, gOut, bOut);
+            onboardrgb.writeHSV(angleCh1,1, v / (float)MAXBRIGHTORANGE, R255);
+            convertHSV(angleCh1, 1, v / (float)MAXBRIGHTORANGE, rOut, gOut, bOut);
             mysetpwm(pwm, RED, GREEN, BLUE, rOut, gOut, bOut, R);
             mysetpwm(pwm, RED2, GREEN2, BLUE2, rOut, gOut, bOut, R);
             mysetpwm(pwm, RED3, GREEN3, BLUE3, rOut, gOut, bOut, R);
             delay(STEPDELAYDOWN);
           }
+          //----------------
           // Purple
-          
-          angle = 305;  // 300 = purple
+          angleCh1 = 305;  // 300 = purple
           for (int v = MINBRIGHT; v < MAXBRIGHTPURPLE; v += STEPSIZE){
-            onboardrgb.writeHSV(angle,1, v / (float)MAXBRIGHTPURPLE, R255);
-            convertHSV(angle, 1, v / (float)MAXBRIGHTPURPLE, rOut, gOut, bOut);
+            onboardrgb.writeHSV(angleCh1,1, v / (float)MAXBRIGHTPURPLE, R255);
+            convertHSV(angleCh1, 1, v / (float)MAXBRIGHTPURPLE, rOut, gOut, bOut);
+            // All 3 channels running the same color
             mysetpwm(pwm, RED, GREEN, BLUE, rOut, gOut, bOut, R);
             mysetpwm(pwm, RED2, GREEN2, BLUE2, rOut, gOut, bOut, R);
             mysetpwm(pwm, RED3, GREEN3, BLUE3, rOut, gOut, bOut, R);
             delay(STEPDELAYUP);
           }
+          delay(HOLDTIME);
           for (int v = MAXBRIGHTPURPLE-1; v >= MINBRIGHT; v -= STEPSIZE){
-            onboardrgb.writeHSV(angle,1, v / (float)MAXBRIGHTPURPLE, R255);
-            convertHSV(angle, 1, v / (float)MAXBRIGHTPURPLE, rOut, gOut, bOut);
+            onboardrgb.writeHSV(angleCh1,1, v / (float)MAXBRIGHTPURPLE, R255);
+            convertHSV(angleCh1, 1, v / (float)MAXBRIGHTPURPLE, rOut, gOut, bOut);
             mysetpwm(pwm, RED, GREEN, BLUE, rOut, gOut, bOut, R);
             mysetpwm(pwm, RED2, GREEN2, BLUE2, rOut, gOut, bOut, R);
             mysetpwm(pwm, RED3, GREEN3, BLUE3, rOut, gOut, bOut, R);
@@ -255,14 +268,182 @@ void loop() {
 
         case XMAS:
           // Do Xmas routine
+          // 1st cycle
+          angleCh1 = 0;  // 0 =  red
+          angleCh2 = 100; // 100 = green
+          angleCh3 = 0; // red
+          for (int v = MINBRIGHT; v < MAXBRIGHTORANGE; v += STEPSIZE){
+            onboardrgb.writeHSV(angleCh1,1, v / (float)MAXBRIGHTORANGE, R255);
+            convertHSV(angleCh1, 1, v / (float)MAXBRIGHTORANGE, rOut, gOut, bOut);
+            mysetpwm(pwm, RED, GREEN, BLUE, rOut, gOut, bOut, R); // Red
+            convertHSV(angleCh2, 1, v / (float)MAXBRIGHTORANGE, rOut, gOut, bOut);
+            mysetpwm(pwm, RED2, GREEN2, BLUE2, rOut, gOut, bOut, R); // Green
+            convertHSV(angleCh3, 1, v / (float)MAXBRIGHTORANGE, rOut, gOut, bOut);
+            mysetpwm(pwm, RED3, GREEN3, BLUE3, rOut, gOut, bOut, R); // red
+            delay(STEPDELAYUP);
+          }
+          delay(HOLDTIME);
+          for (int v = MAXBRIGHTORANGE-1; v >= MINBRIGHT; v -= STEPSIZE){
+            onboardrgb.writeHSV(angleCh1,1, v / (float)MAXBRIGHTORANGE, R255);
+            convertHSV(angleCh1, 1, v / (float)MAXBRIGHTORANGE, rOut, gOut, bOut);
+            mysetpwm(pwm, RED, GREEN, BLUE, rOut, gOut, bOut, R); // red
+            convertHSV(angleCh2, 1, v / (float)MAXBRIGHTORANGE, rOut, gOut, bOut);
+            mysetpwm(pwm, RED2, GREEN2, BLUE2, rOut, gOut, bOut, R); // green
+            convertHSV(angleCh3, 1, v / (float)MAXBRIGHTORANGE, rOut, gOut, bOut);
+            mysetpwm(pwm, RED3, GREEN3, BLUE3, rOut, gOut, bOut, R);
+            delay(STEPDELAYDOWN);
+          }
+          //-----------
+          // 2nd cycle
+          angleCh1 = 100;  // green
+          angleCh2 = 0; // red
+          angleCh3 = 100; // green
+          for (int v = MINBRIGHT; v < MAXBRIGHTORANGE; v += STEPSIZE){
+            onboardrgb.writeHSV(angleCh1,1, v / (float)MAXBRIGHTORANGE, R255);
+            convertHSV(angleCh1, 1, v / (float)MAXBRIGHTORANGE, rOut, gOut, bOut);
+            mysetpwm(pwm, RED, GREEN, BLUE, rOut, gOut, bOut, R); // white
+            convertHSV(angleCh2, 1, v / (float)MAXBRIGHTORANGE, rOut, gOut, bOut);
+            mysetpwm(pwm, RED2, GREEN2, BLUE2, rOut, gOut, bOut, R); //red
+            convertHSV(angleCh3, 1, v / (float)MAXBRIGHTORANGE, rOut, gOut, bOut);
+            mysetpwm(pwm, RED3, GREEN3, BLUE3, rOut, gOut, bOut, R); //green
+            delay(STEPDELAYUP);
+          }
+          delay(HOLDTIME);
+          for (int v = MAXBRIGHTORANGE-1; v >= MINBRIGHT; v -= STEPSIZE){
+            onboardrgb.writeHSV(angleCh1,1, v / (float)MAXBRIGHTORANGE, R255);
+            convertHSV(angleCh1, 1, v / (float)MAXBRIGHTORANGE, rOut, gOut, bOut);
+            mysetpwm(pwm, RED, GREEN, BLUE, rOut, gOut, bOut, R); // white
+            convertHSV(angleCh2, 1, v / (float)MAXBRIGHTORANGE, rOut, gOut, bOut);
+            mysetpwm(pwm, RED2, GREEN2, BLUE2, rOut, gOut, bOut, R); // red
+            convertHSV(angleCh3, 1, v / (float)MAXBRIGHTORANGE, rOut, gOut, bOut);
+            mysetpwm(pwm, RED3, GREEN3, BLUE3, rOut, gOut, bOut, R); // green
+            delay(STEPDELAYDOWN);
+          }
         break;
 
         case RWB:
-          // Do red white blue routine
+          // Do red white blue routine - 4th of July?
+          // Cycle 1 red white blue
+          angleCh1 = 0;  // red
+          angleCh2 = 0; // white
+          angleCh3 = 240; // blue
+          for (int v = MINBRIGHT; v < MAXBRIGHTORANGE; v += STEPSIZE){
+            onboardrgb.writeHSV(angleCh1,1, v / (float)MAXBRIGHTORANGE, R255);
+            convertHSV(angleCh1, 1, v / (float)MAXBRIGHTORANGE, rOut, gOut, bOut);
+            mysetpwm(pwm, RED, GREEN, BLUE, rOut, gOut, bOut, R);
+            convertHSV(angleCh2, 1, v / (float)MAXBRIGHTORANGE, rOut, gOut, bOut);
+            mysetpwm(pwm, RED2, GREEN2, BLUE2, v, v, v, R);
+            convertHSV(angleCh3, 1, v / (float)MAXBRIGHTORANGE, rOut, gOut, bOut);
+            mysetpwm(pwm, RED3, GREEN3, BLUE3, rOut, gOut, bOut, R);
+            delay(STEPDELAYUP);
+          }
+          delay(HOLDTIME);
+          for (int v = MAXBRIGHTORANGE-1; v >= MINBRIGHT; v -= STEPSIZE){
+            onboardrgb.writeHSV(angleCh1,1, v / (float)MAXBRIGHTORANGE, R255);
+            convertHSV(angleCh1, 1, v / (float)MAXBRIGHTORANGE, rOut, gOut, bOut);
+            mysetpwm(pwm, RED, GREEN, BLUE, rOut, gOut, bOut, R);
+            convertHSV(angleCh2, 1, v / (float)MAXBRIGHTORANGE, rOut, gOut, bOut);
+            mysetpwm(pwm, RED2, GREEN2, BLUE2, v, v, v, R);
+            convertHSV(angleCh3, 1, v / (float)MAXBRIGHTORANGE, rOut, gOut, bOut);
+            mysetpwm(pwm, RED3, GREEN3, BLUE3, rOut, gOut, bOut, R);
+            delay(STEPDELAYDOWN);
+          }
+          // Cycle 2 blue red white
+          // 
+          angleCh1 = 240;  // blue
+          angleCh2 = 0; // red
+          angleCh3 = 0; // set manually to white by setting rOut,gOut,bOut = v
+          for (int v = MINBRIGHT; v < MAXBRIGHTORANGE; v += STEPSIZE){
+            onboardrgb.writeHSV(angleCh1,1, v / (float)MAXBRIGHTORANGE, R255);
+            convertHSV(angleCh1, 1, v / (float)MAXBRIGHTORANGE, rOut, gOut, bOut);
+            // All 3 channels running the same color
+            mysetpwm(pwm, RED, GREEN, BLUE, rOut, gOut, bOut, R);
+            convertHSV(angleCh2, 1, v / (float)MAXBRIGHTORANGE, rOut, gOut, bOut);
+            mysetpwm(pwm, RED2, GREEN2, BLUE2, rOut, gOut, bOut, R);
+            convertHSV(angleCh3, 1, v / (float)MAXBRIGHTORANGE, rOut, gOut, bOut);
+            mysetpwm(pwm, RED3, GREEN3, BLUE3, v, v, v, R); // white
+            delay(STEPDELAYUP);
+          }
+          delay(HOLDTIME);
+          for (int v = MAXBRIGHTORANGE-1; v >= MINBRIGHT; v -= STEPSIZE){
+            onboardrgb.writeHSV(angleCh1,1, v / (float)MAXBRIGHTPURPLE, R255);
+            convertHSV(angleCh1, 1, v / (float)MAXBRIGHTPURPLE, rOut, gOut, bOut);
+            mysetpwm(pwm, RED, GREEN, BLUE, rOut, gOut, bOut, R);
+            convertHSV(angleCh2, 1, v / (float)MAXBRIGHTPURPLE, rOut, gOut, bOut);
+            mysetpwm(pwm, RED2, GREEN2, BLUE2, rOut, gOut, bOut, R);
+            convertHSV(angleCh3, 1, v / (float)MAXBRIGHTORANGE, rOut, gOut, bOut);
+            mysetpwm(pwm, RED3, GREEN3, BLUE3, v, v, v, R); // white
+            delay(STEPDELAYDOWN);
+          }
+          // Cycle 3 white blue red
+          angleCh1 = 0;  // set manually to white by setting rOut,gOut,bOut = v
+          angleCh2 = 240; // blue
+          angleCh3 = 0; // red
+          for (int v = MINBRIGHT; v < MAXBRIGHTORANGE; v += STEPSIZE){
+            onboardrgb.writeHSV(angleCh1,1, v / (float)MAXBRIGHTORANGE, R255);
+            convertHSV(angleCh1, 1, v / (float)MAXBRIGHTORANGE, rOut, gOut, bOut);
+            mysetpwm(pwm, RED, GREEN, BLUE, v, v, v, R);
+            convertHSV(angleCh2, 1, v / (float)MAXBRIGHTORANGE, rOut, gOut, bOut);
+            mysetpwm(pwm, RED2, GREEN2, BLUE2, rOut, gOut, bOut, R);
+            convertHSV(angleCh3, 1, v / (float)MAXBRIGHTORANGE, rOut, gOut, bOut);
+            mysetpwm(pwm, RED3, GREEN3, BLUE3, rOut, gOut, bOut, R);
+            delay(STEPDELAYUP);
+          }
+          delay(HOLDTIME);
+          for (int v = MAXBRIGHTORANGE-1; v >= MINBRIGHT; v -= STEPSIZE){
+            onboardrgb.writeHSV(angleCh1,1, v / (float)MAXBRIGHTORANGE, R255);
+            convertHSV(angleCh1, 1, v / (float)MAXBRIGHTORANGE, rOut, gOut, bOut);
+            mysetpwm(pwm, RED, GREEN, BLUE, v, v, v, R);
+            convertHSV(angleCh2, 1, v / (float)MAXBRIGHTORANGE, rOut, gOut, bOut);
+            mysetpwm(pwm, RED2, GREEN2, BLUE2, rOut, gOut, bOut, R);
+            convertHSV(angleCh3, 1, v / (float)MAXBRIGHTORANGE, rOut, gOut, bOut);
+            mysetpwm(pwm, RED3, GREEN3, BLUE3, rOut, gOut, bOut, R);
+            delay(STEPDELAYDOWN);
+          }
         break;
 
         case HANUKKAH:
-          // Do hanukkah routine
+          // Do hanukkah routine, alternate white + blue
+          angleCh1 = 225;  // 225 = cool blue
+          for (int v = MINBRIGHT; v < MAXBRIGHTORANGE; v += STEPSIZE){
+            onboardrgb.writeHSV(angleCh1,1, v / (float)MAXBRIGHTORANGE, R255);
+            convertHSV(angleCh1, 1, v / (float)MAXBRIGHTORANGE, rOut, gOut, bOut);
+            // All 3 channels running the same color
+            mysetpwm(pwm, RED, GREEN, BLUE, rOut, gOut, bOut, R);
+            mysetpwm(pwm, RED2, GREEN2, BLUE2, rOut, gOut, bOut, R);
+            mysetpwm(pwm, RED3, GREEN3, BLUE3, rOut, gOut, bOut, R);
+            delay(STEPDELAYUP);
+          }
+          delay(HOLDTIME);
+          for (int v = MAXBRIGHTORANGE-1; v >= MINBRIGHT; v -= STEPSIZE){
+            onboardrgb.writeHSV(angleCh1,1, v / (float)MAXBRIGHTORANGE, R255);
+            convertHSV(angleCh1, 1, v / (float)MAXBRIGHTORANGE, rOut, gOut, bOut);
+            mysetpwm(pwm, RED, GREEN, BLUE, rOut, gOut, bOut, R);
+            mysetpwm(pwm, RED2, GREEN2, BLUE2, rOut, gOut, bOut, R);
+            mysetpwm(pwm, RED3, GREEN3, BLUE3, rOut, gOut, bOut, R);
+            delay(STEPDELAYDOWN);
+          }
+          //----------------
+          // White
+          angleCh1 = 0;  // set manually to white by setting rOut,gOut,bOut = v
+          for (int v = MINBRIGHT; v < MAXBRIGHTPURPLE; v += STEPSIZE){
+            onboardrgb.writeHSV(angleCh1,1, v / (float)MAXBRIGHTPURPLE, R255);
+            convertHSV(angleCh1, 1, v / (float)MAXBRIGHTPURPLE, rOut, gOut, bOut);
+            // All 3 channels running the same color
+            mysetpwm(pwm, RED, GREEN, BLUE, v, v, v, R);
+            mysetpwm(pwm, RED2, GREEN2, BLUE2, v, v, v, R);
+            mysetpwm(pwm, RED3, GREEN3, BLUE3, v, v, v, R);
+            delay(STEPDELAYUP);
+          }
+          delay(HOLDTIME);
+          for (int v = MAXBRIGHTPURPLE-1; v >= MINBRIGHT; v -= STEPSIZE){
+            onboardrgb.writeHSV(angleCh1,1, v / (float)MAXBRIGHTPURPLE, R255);
+            convertHSV(angleCh1, 1, v / (float)MAXBRIGHTPURPLE, rOut, gOut, bOut);
+            mysetpwm(pwm, RED, GREEN, BLUE, v, v, v, R);
+            mysetpwm(pwm, RED2, GREEN2, BLUE2, v, v, v, R);
+            mysetpwm(pwm, RED3, GREEN3, BLUE3, v, v, v, R);
+            delay(STEPDELAYDOWN);
+          }
         break;
       } // end switch (modeState)
     }
