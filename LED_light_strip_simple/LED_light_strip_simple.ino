@@ -270,7 +270,7 @@ void loop() {
           // Do Xmas routine
           // 1st cycle
           angleCh1 = 0;  // 0 =  red
-          angleCh2 = 100; // 100 = green
+          angleCh2 = 0; // 0 = red
           angleCh3 = 0; // red
           for (int v = MINBRIGHT; v < MAXBRIGHTORANGE; v += STEPSIZE){
             onboardrgb.writeHSV(angleCh1,1, v / (float)MAXBRIGHTORANGE, R255);
@@ -296,7 +296,7 @@ void loop() {
           //-----------
           // 2nd cycle
           angleCh1 = 100;  // green
-          angleCh2 = 0; // red
+          angleCh2 = 100; // green
           angleCh3 = 100; // green
           for (int v = MINBRIGHT; v < MAXBRIGHTORANGE; v += STEPSIZE){
             onboardrgb.writeHSV(angleCh1,1, v / (float)MAXBRIGHTORANGE, R255);
@@ -446,6 +446,11 @@ void loop() {
           }
         break;
       } // end switch (modeState)
+    } else {
+      // Make sure things are shut off
+        for (byte i = 0; i < 16; i++){
+          pwm.setPWM(i, 0, 0); // Channel, on, off (relative to start of 4096-part cycle)  
+        }
     }
 
      
