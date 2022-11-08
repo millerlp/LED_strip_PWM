@@ -1,6 +1,7 @@
 /* 
  *  Run LED light strip off of MusselBedHeater RevF board
- *  with PCA9685 PWM driver.
+ *  with PCA9685 PWM driver. That board profile is 
+ *  set via Optiboot, 32-pin CPUs, 328p, 8MHz (Int) clock
  *  The light strip is a Govee H6160 strip, which has 4
  *  lines: +12V, R, G, B, arranged in a common anode arrangement
  *  and is driven by sending a PWM signal to each of the 3 color
